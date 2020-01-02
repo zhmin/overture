@@ -69,6 +69,7 @@ func (c *RemoteClient) ExchangeFromCache() *dns.Msg {
 }
 
 func (c *RemoteClient) Exchange(isLog bool) *dns.Msg {
+	startTime := time.Now()
 	common.SetEDNSClientSubnet(c.questionMessage, c.ednsClientSubnetIP,
 		c.dnsUpstream.EDNSClientSubnet.NoCookie)
 	c.ednsClientSubnetIP = common.GetEDNSClientSubnetIP(c.questionMessage)
@@ -111,7 +112,8 @@ func (c *RemoteClient) Exchange(isLog bool) *dns.Msg {
 	if isLog {
 		c.logAnswer("")
 	}
-
+	elapsed := time.Since(startTime)
+	log.Debugf("Exchange dns record cost %s", elapsed.String())
 	return c.responseMessage
 }
 
@@ -256,7 +258,13 @@ func (c *RemoteClient) ExchangeByHTTPS(conn net.Conn) (*dns.Msg, error) {
 
 func (c *RemoteClient) setTimeout(conn net.Conn) {
 	dnsTimeout := time.Duration(c.dnsUpstream.Timeout) * time.Second / 3
-	conn.SetDeadline(time.Now().Add(dnsTimeout))
-	conn.SetReadDeadline(time.Now().Add(dnsTimeout))
-	conn.SetWriteDeadline(time.Now().Add(dnsTimeout))
+	if err := conn.SetDeadline(time.Now().Add(dnsTimeout)); err != nil {
+		log.Infof("set connection timeout error: %s", err)
+	}
+	if err := conn.SetReadDeadline(time.Now().Add(dnsTimeout)); err != nil {
+		log.Infof("set connection timeout error: %s", err)
+	}
+	if err := conn.SetWriteDeadline(time.Now().Add(dnsTimeout)); err != nil {
+		log.Infof("set connection timeout error: %s", err)
+	}
 }
